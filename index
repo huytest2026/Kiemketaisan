@@ -21,7 +21,7 @@
 <body>
   <h2>Đang mở hệ thống kiểm kê tài sản...</h2>
   <p>Nếu trang không tự chuyển, vui lòng
-    <a href="URL_WEB_APP_KIEM_KE">nhấn vào đây để mở hệ thống</a>.
+    <a href="https://script.google.com/macros/s/AKfycbxCMKhXleevsS-nGpDTVLXidklfRGUrny6PG7EfrnZ4aTYsB1EsiqQmBBT6UROhXRcE6w/exec">nhấn vào đây để mở hệ thống</a>.
   </p>
   <script>
     window.location.replace("https://script.google.com/macros/s/AKfycbxCMKhXleevsS-nGpDTVLXidklfRGUrny6PG7EfrnZ4aTYsB1EsiqQmBBT6UROhXRcE6w/exec");
