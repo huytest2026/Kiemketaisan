@@ -2,39 +2,46 @@
 <html lang="vi">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Quet QR / Barcode - Kiem ke tai san</title>
 <style>
-*{box-sizing:border-box}body{font:15px Arial,sans-serif;background:#f3f6fa;color:#1f2937;margin:0;padding:16px}
-.wrap{max-width:680px;margin:auto;background:#fff;border-radius:14px;padding:18px;box-shadow:0 4px 18px #00000012}
+*{box-sizing:border-box}body{font:16px Arial,sans-serif;background:#f3f6fa;color:#1f2937;margin:0;padding:14px}
+.wrap{max-width:680px;margin:auto;background:#fff;border-radius:14px;padding:16px;box-shadow:0 4px 18px #00000012}
 h2{margin:0 0 8px;color:#174a7e}p{color:#64748b;line-height:1.5}
-label{display:block;margin:12px 0 5px;font-weight:600}select,button{font-size:16px;padding:11px;border-radius:7px}
-select{width:100%;border:1px solid #cbd5e1;background:white}button{border:0;cursor:pointer;font-weight:600;margin:8px 6px 0 0}
-.primary{background:#1769aa;color:white}.gray{background:#e5e7eb;color:#1f2937}.status{padding:11px;border-radius:8px;background:#eef6ff;margin:12px 0;line-height:1.45}
+button{font-size:16px;padding:12px 14px;border:0;border-radius:8px;cursor:pointer;font-weight:600;margin:6px 5px 6px 0;min-height:46px}
+button:disabled{opacity:.5}.primary{background:#1769aa;color:white}.gray{background:#e5e7eb;color:#1f2937}.status{padding:11px;border-radius:8px;background:#eef6ff;margin:12px 0;line-height:1.45;overflow-wrap:anywhere}
 .status.good{background:#eaf7ee;color:#166534}.status.error{background:#fef2f2;color:#991b1b}
-#reader{width:100%;max-width:620px;margin:12px auto;background:#fff;overflow:hidden;border-radius:8px}
-#reader video{width:100%!important;height:auto!important;object-fit:cover}
-.small{font-size:13px;color:#64748b}
+#reader{width:100%;max-width:620px;margin:12px auto;background:#111;overflow:hidden;border-radius:8px;min-height:180px}
+#reader video{width:100%!important;height:auto!important;object-fit:cover;display:block}
+.small{font-size:13px;color:#64748b;line-height:1.5}.controls{display:flex;flex-wrap:wrap;gap:4px}
 </style>
 </head>
 <body>
 <div class="wrap">
   <h2>📷 Quét QR Code / Mã vạch</h2>
-  <p>Chọn webcam laptop nếu có nhiều camera. Khi đọc được mã, Serial sẽ tự động gửi về ứng dụng kiểm kê.</p>
-  <label for="cameraSelect">Thiết bị camera</label>
-  <select id="cameraSelect"><option value="">Đang tìm camera...</option></select>
-  <div id="status" class="status">Đang khởi tạo camera...</div>
+  <p>Trên iPhone, chạm nút BẬT CAMERA trước. Mặc định ưu tiên camera sau để quét mã tài sản.</p>
+  <div class="controls">
+    <button class="primary" id="startBackBtn" type="button">📷 BẬT CAMERA SAU</button>
+    <button class="gray" id="startFrontBtn" type="button">Bật camera trước</button>
+  </div>
+  <div id="status" class="status">Chưa bật camera. Hãy chạm “BẬT CAMERA SAU” và cho phép truy cập camera nếu Safari hỏi.</div>
   <div id="reader"></div>
-  <button class="gray" id="closeBtn" type="button">Đóng cửa sổ</button>
-  <div class="small">Trang camera chạy riêng trên GitHub Pages để tránh giới hạn quyền camera của Google Apps Script HTML Service.</div>
+  <div class="controls">
+    <button class="gray" id="switchBtn" type="button" disabled>🔄 Chuyển camera trước / sau</button>
+    <button class="gray" id="closeBtn" type="button">Đóng cửa sổ</button>
+  </div>
+  <div class="small">Nếu camera sau không khởi động, hãy thử nút chuyển camera sau khi đã cấp quyền. Giữ trang này ở chế độ mở và không khóa màn hình khi quét.</div>
 </div>
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script>
 let scanner = null;
 let starting = false;
 let sent = false;
+let currentFacing = 'environment';
 const statusBox = document.getElementById('status');
-const select = document.getElementById('cameraSelect');
+const backBtn = document.getElementById('startBackBtn');
+const frontBtn = document.getElementById('startFrontBtn');
+const switchBtn = document.getElementById('switchBtn');
 function status(message, type) {
   statusBox.textContent = message;
   statusBox.className = 'status' + (type ? ' ' + type : '');
@@ -45,11 +52,17 @@ async function stopScanner() {
   try { await scanner.clear(); } catch(e) {}
   scanner = null;
 }
-async function startScanner(cameraId) {
+async function startScanner(facing) {
   if (starting) return;
   starting = true;
+  backBtn.disabled = frontBtn.disabled = switchBtn.disabled = true;
   try {
+    if (!window.isSecureContext || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      throw new Error('Trinh duyet khong ho tro camera. Hay mo trang bang HTTPS tren Safari hoac Chrome.');
+    }
     await stopScanner();
+    sent = false;
+    currentFacing = facing;
     const formats = [
       Html5QrcodeSupportedFormats.QR_CODE,
       Html5QrcodeSupportedFormats.CODE_128,
@@ -62,7 +75,8 @@ async function startScanner(cameraId) {
       Html5QrcodeSupportedFormats.CODABAR
     ];
     scanner = new Html5Qrcode('reader', {formatsToSupport:formats, verbose:false});
-    await scanner.start(cameraId, {
+    // iOS Safari thuong on dinh hon khi chon camera bang facingMode thay vi deviceId.
+    await scanner.start({facingMode:facing}, {
       fps:10,
       qrbox:function(w,h){const size=Math.floor(Math.min(w,h)*0.75);return {width:Math.min(size,360),height:Math.min(size,240)};},
       aspectRatio:1.0
@@ -74,7 +88,7 @@ async function startScanner(cameraId) {
       status('Da doc duoc Serial: ' + serial + '. Dang gui ve ung dung...', 'good');
       await stopScanner();
       if (window.opener && !window.opener.closed) {
-        // Origin opener cua Apps Script co the thay doi theo phien; trang cha kiem tra origin nguon.
+        // Gui Serial ve cua so ung dung dang mo.
         window.opener.postMessage({type:'ASSET_SERIAL_SCANNED', serial:serial}, '*');
         setTimeout(function(){window.close();}, 500);
       } else {
@@ -82,37 +96,30 @@ async function startScanner(cameraId) {
         status('Khong tim thay cua so ung dung dang mo. Hay mo camera bang nut Quet trong ung dung kiem ke.', 'error');
       }
     }, function(){ /* Bo qua loi doc tung frame */ });
-    const chosen = (await Html5Qrcode.getCameras()).find(c => c.id === cameraId);
-    status('Camera dang hoat dong: ' + (chosen && chosen.label ? chosen.label : 'Webcam') + '. Dua ma vao khung hinh.', 'good');
+    const videos = document.querySelectorAll('#reader video');
+    videos.forEach(function(v){v.setAttribute('playsinline','');v.setAttribute('webkit-playsinline','');v.muted=true;});
+    status(facing === 'environment' ? 'Da bat camera sau. Dua ma QR/Barcode vao khung hinh.' : 'Da bat camera truoc. Dua ma QR/Barcode vao khung hinh.', 'good');
+    switchBtn.disabled = false;
   } catch(e) {
     const msg = e && e.message ? e.message : String(e);
     let tip = '';
-    if (e && e.name === 'NotAllowedError') tip = ' Hay bam bieu tuong ben trai thanh dia chi va cho phep Camera cho github.io.';
-    else if (e && e.name === 'NotReadableError') tip = ' Hay dong Zoom, Teams, Zalo hoac ung dung dang dung webcam.';
+    if (e && e.name === 'NotAllowedError') tip = ' Hay vao Cai dat iPhone > Safari (hoac Chrome) > Camera va chon Cho phep; dong mo lai trang.';
+    else if (e && (e.name === 'OverconstrainedError' || e.name === 'NotFoundError')) tip = ' Thiet bi khong mo duoc camera theo yeu cau nay. Hay thu camera con lai.';
+    else if (e && e.name === 'NotReadableError') tip = ' Hay dong ung dung khac dang su dung camera roi thu lai.';
     status('Khong mo duoc camera: ' + msg + '.' + tip, 'error');
     await stopScanner();
-  } finally { starting = false; }
-}
-async function init() {
-  try {
-    if (!window.isSecureContext || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      throw new Error('Trinh duyet khong ho tro camera trong boi canh hien tai. Hay mo bang HTTPS tren Chrome.');
-    }
-    const cameras = await Html5Qrcode.getCameras();
-    if (!cameras.length) throw new Error('Khong tim thay camera.');
-    select.innerHTML = '';
-    cameras.forEach((c,i)=>{const o=document.createElement('option');o.value=c.id;o.textContent=c.label || ('Camera '+(i+1));select.appendChild(o);});
-    let preferred = cameras.find(c=>/integrated|built.?in|webcam|usb camera|hd camera/i.test(c.label||'')) || cameras[0];
-    select.value = preferred.id;
-    await startScanner(preferred.id);
-  } catch(e) {
-    status('Khong khoi tao duoc camera: ' + (e.message || String(e)), 'error');
+  } finally {
+    starting = false;
+    backBtn.disabled = false;
+    frontBtn.disabled = false;
+    if (scanner && scanner.isScanning) switchBtn.disabled = false;
   }
 }
-select.addEventListener('change',()=>{if(select.value){sent=false;startScanner(select.value);}});
-document.getElementById('closeBtn').addEventListener('click',async()=>{await stopScanner();window.close();});
-window.addEventListener('beforeunload',()=>{try{if(scanner && scanner.isScanning) scanner.stop();}catch(e){}});
-init();
+backBtn.addEventListener('click',function(){startScanner('environment');});
+frontBtn.addEventListener('click',function(){startScanner('user');});
+switchBtn.addEventListener('click',function(){startScanner(currentFacing === 'environment' ? 'user' : 'environment');});
+document.getElementById('closeBtn').addEventListener('click',async function(){await stopScanner();window.close();});
+window.addEventListener('beforeunload',function(){try{if(scanner && scanner.isScanning) scanner.stop();}catch(e){}});
 </script>
 </body>
 </html>
