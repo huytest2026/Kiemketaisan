@@ -1,1 +1,66 @@
 
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#174a7e">
+  <title>Quản lý kiểm kê tài sản</title>
+
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 20px;
+      font-family: Arial, sans-serif;
+      background: #f1f5f9;
+      color: #1e293b;
+    }
+    .box {
+      width: 100%;
+      max-width: 460px;
+      padding: 30px 22px;
+      text-align: center;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 4px 20px #00000012;
+    }
+    h2 { color: #174a7e; }
+    p { line-height: 1.6; color: #64748b; }
+    a {
+      display: block;
+      margin-top: 22px;
+      padding: 14px;
+      color: white;
+      background: #1769aa;
+      border-radius: 9px;
+      text-decoration: none;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h2>QUẢN LÝ KIỂM KÊ TÀI SẢN</h2>
+    <p>Đang chuyển đến hệ thống kiểm kê tài sản...</p>
+    <a id="openApp" href="#">
+      MỞ ỨNG DỤNG
+    </a>
+    <p>Nếu chưa tự chuyển trang, vui lòng nhấn nút phía trên.</p>
+  </div>
+
+  <script>
+    const APP_URL =
+      "https://script.google.com/macros/s/AKfycbxCMKhXleevsS-nGpDTVLXidklfRGUrny6PG7EfrnZ4aTYsB1EsiqQmBBT6UROhXRcE6w/exec";
+
+    document.getElementById("openApp").href = APP_URL;
+
+    setTimeout(function () {
+      window.location.href = APP_URL;
+    }, 1500);
+  </script>
+</body>
+</html>
