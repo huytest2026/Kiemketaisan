@@ -3,9 +3,8 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-
-  <title>KIỂM KÊ TÀI SẢN</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HỆ THỐNG KIỂM KÊ TÀI SẢN</title>
 
   <style>
     * {
@@ -19,105 +18,52 @@
       padding: 0;
       overflow: hidden;
       font-family: Arial, sans-serif;
-      background: #f1f5f9;
     }
 
-    .app {
-      width: 100%;
-      height: 100%;
+    .app-container {
       display: flex;
       flex-direction: column;
+      width: 100%;
+      height: 100vh;
     }
 
-    .header {
+    .app-header {
+      flex: 0 0 auto;
       height: 42px;
-      flex-shrink: 0;
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      padding: 0 12px;
+      padding: 0 14px;
       color: white;
       background: #174a7e;
-      font-size: 14px;
+      font-size: 15px;
       font-weight: bold;
     }
 
-    .header a {
-      color: white;
-      text-decoration: none;
-      font-size: 12px;
-      font-weight: normal;
-    }
-
-    .frame-wrap {
-      flex: 1;
-      min-height: 0;
-      position: relative;
-    }
-
-    iframe {
+    .app-frame {
+      flex: 1 1 auto;
       width: 100%;
-      height: 100%;
-      border: 0;
+      min-height: 0;
+      border: none;
       display: block;
       background: white;
-    }
-
-    .loading {
-      position: absolute;
-      inset: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: #f1f5f9;
-      color: #174a7e;
-      z-index: 1;
-      pointer-events: none;
-    }
-
-    @media (max-width: 600px) {
-      .header {
-        height: 36px;
-      }
     }
   </style>
 </head>
 
 <body>
-  <div class="app">
+  <div class="app-container">
 
-    <div class="header">
-      <span>KIỂM KÊ TÀI SẢN</span>
-
-      <a
-        href="https://script.google.com/macros/s/AKfycbxCMKhXleevsS-nGpDTVLXidklfRGUrny6PG7EfrnZ4aTYsB1EsiqQmBBT6UROhXRcE6w/exec"
-        target="_blank"
-        rel="noopener">
-        Mở cửa sổ riêng
-      </a>
+    <div class="app-header">
+      HỆ THỐNG QUẢN LÝ KIỂM KÊ TÀI SẢN
     </div>
 
-    <div class="frame-wrap">
+    <iframe
+      class="app-frame"
+      id="assetApp"
+      src="https://script.google.com/macros/s/AKfycbxCMKhXleevsS-nGpDTVLXidklfRGUrny6PG7EfrnZ4aTYsB1EsiqQmBBT6UROhXRcE6w/exec"
+      title="Ứng dụng kiểm kê tài sản">
+    </iframe>
 
-      <div class="loading" id="loading">
-        Đang mở ứng dụng kiểm kê...
-      </div>
-
-      <iframe
-        id="inventoryApp"
-        src="https://script.google.com/macros/s/AKfycbxCMKhXleevsS-nGpDTVLXidklfRGUrny6PG7EfrnZ4aTYsB1EsiqQmBBT6UROhXRcE6w/exec"
-        allow="fullscreen"
-        allowfullscreen>
-      </iframe>
-
-    </div>
   </div>
-
-  <script>
-    document.getElementById('inventoryApp')
-      .addEventListener('load', function() {
-        document.getElementById('loading').style.display = 'none';
-      });
-  </script>
 </body>
 </html>
