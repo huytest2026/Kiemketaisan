@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quet QR / Barcode - Kiem ke tai san</title>
+<style>
+*{box-sizing:border-box}body{font:15px Arial,sans-serif;background:#f3f6fa;color:#1f2937;margin:0;padding:16px}
+.wrap{max-width:680px;margin:auto;background:#fff;border-radius:14px;padding:18px;box-shadow:0 4px 18px #00000012}
+h2{margin:0 0 8px;color:#174a7e}p{color:#64748b;line-height:1.5}
+label{display:block;margin:12px 0 5px;font-weight:600}select,button{font-size:16px;padding:11px;border-radius:7px}
+select{width:100%;border:1px solid #cbd5e1;background:white}button{border:0;cursor:pointer;font-weight:600;margin:8px 6px 0 0}
+.primary{background:#1769aa;color:white}.gray{background:#e5e7eb;color:#1f2937}.status{padding:11px;border-radius:8px;background:#eef6ff;margin:12px 0;line-height:1.45}
+.status.good{background:#eaf7ee;color:#166534}.status.error{background:#fef2f2;color:#991b1b}
+#reader{width:100%;max-width:620px;margin:12px auto;background:#fff;overflow:hidden;border-radius:8px}
+#reader video{width:100%!important;height:auto!important;object-fit:cover}
+.small{font-size:13px;color:#64748b}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h2>📷 Quét QR Code / Mã vạch</h2>
+  <p>Chọn webcam laptop nếu có nhiều camera. Khi đọc được mã, Serial sẽ tự động gửi về ứng dụng kiểm kê.</p>
+  <label for="cameraSelect">Thiết bị camera</label>
+  <select id="cameraSelect"><option value="">Đang tìm camera...</option></select>
+  <div id="status" class="status">Đang khởi tạo camera...</div>
+  <div id="reader"></div>
+  <button class="gray" id="closeBtn" type="button">Đóng cửa sổ</button>
+  <div class="small">Trang camera chạy riêng trên GitHub Pages để tránh giới hạn quyền camera của Google Apps Script HTML Service.</div>
+</div>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script>
+let scanner = null;
+let starting = false;
+let sent = false;
+const statusBox = document.getElementById('status');
+const select = document.getElementById('cameraSelect');
+function status(message, type) {
+  statusBox.textContent = message;
+  statusBox.className = 'status' + (type ? ' ' + type : '');
+}
+async function stopScanner() {
+  if (!scanner) return;
+  try { if (scanner.isScanning) await scanner.stop(); } catch(e) {}
+  try { await scanner.clear(); } catch(e) {}
+  scanner = null;
+}
+async function startScanner(cameraId) {
+  if (starting) return;
+  starting = true;
+  try {
+    await stopScanner();
+    const formats = [
+      Html5QrcodeSupportedFormats.QR_CODE,
+      Html5QrcodeSupportedFormats.CODE_128,
+      Html5QrcodeSupportedFormats.CODE_39,
+      Html5QrcodeSupportedFormats.EAN_13,
+      Html5QrcodeSupportedFormats.EAN_8,
+      Html5QrcodeSupportedFormats.UPC_A,
+      Html5QrcodeSupportedFormats.UPC_E,
+      Html5QrcodeSupportedFormats.ITF,
+      Html5QrcodeSupportedFormats.CODABAR
+    ];
+    scanner = new Html5Qrcode('reader', {formatsToSupport:formats, verbose:false});
+    await scanner.start(cameraId, {
+      fps:10,
+      qrbox:function(w,h){const size=Math.floor(Math.min(w,h)*0.75);return {width:Math.min(size,360),height:Math.min(size,240)};},
+      aspectRatio:1.0
+    }, async function(decodedText) {
+      if (sent) return;
+      const serial = String(decodedText || '').trim();
+      if (!serial) return;
+      sent = true;
+      status('Da doc duoc Serial: ' + serial + '. Dang gui ve ung dung...', 'good');
+      await stopScanner();
+      if (window.opener && !window.opener.closed) {
+        // Origin opener cua Apps Script co the thay doi theo phien; trang cha kiem tra origin nguon.
+        window.opener.postMessage({type:'ASSET_SERIAL_SCANNED', serial:serial}, '*');
+        setTimeout(function(){window.close();}, 500);
+      } else {
+        sent = false;
+        status('Khong tim thay cua so ung dung dang mo. Hay mo camera bang nut Quet trong ung dung kiem ke.', 'error');
+      }
+    }, function(){ /* Bo qua loi doc tung frame */ });
+    const chosen = (await Html5Qrcode.getCameras()).find(c => c.id === cameraId);
+    status('Camera dang hoat dong: ' + (chosen && chosen.label ? chosen.label : 'Webcam') + '. Dua ma vao khung hinh.', 'good');
+  } catch(e) {
+    const msg = e && e.message ? e.message : String(e);
+    let tip = '';
+    if (e && e.name === 'NotAllowedError') tip = ' Hay bam bieu tuong ben trai thanh dia chi va cho phep Camera cho github.io.';
+    else if (e && e.name === 'NotReadableError') tip = ' Hay dong Zoom, Teams, Zalo hoac ung dung dang dung webcam.';
+    status('Khong mo duoc camera: ' + msg + '.' + tip, 'error');
+    await stopScanner();
+  } finally { starting = false; }
+}
+async function init() {
+  try {
+    if (!window.isSecureContext || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      throw new Error('Trinh duyet khong ho tro camera trong boi canh hien tai. Hay mo bang HTTPS tren Chrome.');
+    }
+    const cameras = await Html5Qrcode.getCameras();
+    if (!cameras.length) throw new Error('Khong tim thay camera.');
+    select.innerHTML = '';
+    cameras.forEach((c,i)=>{const o=document.createElement('option');o.value=c.id;o.textContent=c.label || ('Camera '+(i+1));select.appendChild(o);});
+    let preferred = cameras.find(c=>/integrated|built.?in|webcam|usb camera|hd camera/i.test(c.label||'')) || cameras[0];
+    select.value = preferred.id;
+    await startScanner(preferred.id);
+  } catch(e) {
+    status('Khong khoi tao duoc camera: ' + (e.message || String(e)), 'error');
+  }
+}
+select.addEventListener('change',()=>{if(select.value){sent=false;startScanner(select.value);}});
+document.getElementById('closeBtn').addEventListener('click',async()=>{await stopScanner();window.close();});
+window.addEventListener('beforeunload',()=>{try{if(scanner && scanner.isScanning) scanner.stop();}catch(e){}});
+init();
+</script>
+</body>
+</html>
